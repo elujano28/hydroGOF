@@ -1,5 +1,8 @@
-#--------- Evaluacion de PPS -------
-# librerias
+#---------------------------------------
+# Evaluación de productos de precipitación satelital (PPS)
+#---------------------------------------
+
+# Cargar librerías necesarias
 library(zoo)
 library(hydroGOF)
 library(xts)
@@ -7,40 +10,83 @@ library(hydroTSM)
 library(readxl)
 
 # Fijar el directorio de trabajo
-
-setwd("C:/Users/EFRAIN/Downloads")
+setwd("C:/Users/User/Downloads")
 getwd()
 
-# Importación de datos excel
+# Importar los datos desde archivos Excel
 dato_obs <- read_xls("obs.xls")
 dato_sim <- read_xls("sim.xls")
-obs <- read.zoo(dato_obs)
-sim <- read.zoo(dato_sim)
 
-# Ajuste del rango de tiempo
-obs <- window(x = obs, start = "2003-01-01",end = "2012-12-31")
-sim <- window(x = sim, start = "2003-01-01",end = "2012-12-31")
+# Convertir a series de tiempo zoo
+obs <- zoo(dato_obs[, -1], order.by = as.Date(dato_obs$fecha))
+sim <- zoo(dato_sim[, -1], order.by = as.Date(dato_sim$fecha))
 
-# Graficando las series de tiempo 
-plot.zoo(as.zoo(obs))
+#---------------------------------------
+# Evaluación para una estación (columna 1)
+#---------------------------------------
 
-# Cálculo de métricas de eficiencia
+# Graficar la serie de tiempo observada
+plot.zoo(as.zoo(obs[, 1]), main = "Observaciones - Estación 1")
 
-# Diario
-eval_diaria <- gof(sim, obs)
-eval_diaria
+# Calcular métricas de eficiencia diarias
+eval_diaria <- gof(sim[, 1], obs[, 1])
+print(eval_diaria)
 
-ggof(sim=sim, obs=obs,col = c("red", "blue"),
-     gofs=c("NSE","KGE","R2","RMSE","PBIAS"))
+# Gráfico de comparación de las series observada y simulada diarias
+ggof(sim = sim[, 1], obs = obs[, 1], col = c("red", "blue"),
+     gofs = c("NSE", "KGE", "R2", "RMSE", "PBIAS"), main = "Comparación Diaria")
 
-# Mensual
-obs_mensual <- apply.monthly(obs, FUN=apply, MARGIN = 2, sum)
+# Calcular totales mensuales
+obs_mensual <- apply.monthly(obs[, 1], sum)
+sim_mensual <- apply.monthly(sim[, 1], sum)
 
-sim_mensual <- apply.monthly(sim, FUN=apply, MARGIN = 2, sum)
-
+# Calcular métricas de eficiencia mensuales
 eval_mensual <- gof(sim_mensual, obs_mensual)
-eval_mensual
+print(eval_mensual)
 
-# Gráficos para series temporales Mensual y anual
-ggof(sim=sim, obs=obs,ftype = "ma", FUN=mean,col = c("red", "blue"),
-     gofs=c("NSE","KGE","R2","RMSE","PBIAS"))
+# Gráfico de comparación de series temporales mensuales
+ggof(sim = sim_mensual, obs = obs_mensual, ftype = "ma", FUN = mean, col = c("red", "blue"),
+     gofs = c("NSE", "KGE", "R2", "RMSE", "PBIAS"), main = "Comparación Mensual")
+
+#---------------------------------------
+# Evaluación para múltiples estaciones
+#---------------------------------------
+
+# Inicializar data frames para almacenar los resultados de todas las estaciones
+resultados_diarios <- data.frame(matrix(ncol = ncol(obs), nrow = 5))
+resultados_mensuales <- data.frame(matrix(ncol = ncol(obs), nrow = 5))
+
+# Nombres de las filas para las métricas
+rownames(resultados_diarios) <- c("NSE", "KGE", "R2", "RMSE", "PBIAS")
+rownames(resultados_mensuales) <- c("NSE", "KGE", "R2", "RMSE", "PBIAS")
+
+# Calcular métricas para cada estación
+for (i in 1:ncol(obs)) {
+  
+  # Series de cada estación
+  obs_estacion <- obs[, i]
+  sim_estacion <- sim[, i]
+  
+  # Evaluación diaria
+  eval_diaria_est <- gof(sim_estacion, obs_estacion)
+  resultados_diarios[, i] <- eval_diaria_est[1:5] # Asumiendo que gof devuelve las métricas en el mismo orden
+  
+  # Evaluación mensual
+  obs_mensual_est <- apply.monthly(obs_estacion, sum)
+  sim_mensual_est <- apply.monthly(sim_estacion, sum)
+  eval_mensual_est <- gof(sim_mensual_est, obs_mensual_est)
+  resultados_mensuales[, i] <- eval_mensual_est[1:5] # Asumiendo que gof devuelve las métricas en el mismo orden
+}
+
+# Asignar nombres de columnas
+colnames(resultados_diarios) <- colnames(obs)
+colnames(resultados_mensuales) <- colnames(obs)
+
+# Mostrar resultados diarios por estación
+print("Resultados Diarios por Estación:")
+print(resultados_diarios)
+
+# Mostrar resultados mensuales por estación
+print("Resultados Mensuales por Estación:")
+print(resultados_mensuales)
+#---------------------------------------
