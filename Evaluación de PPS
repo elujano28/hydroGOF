@@ -6,25 +6,32 @@ library(xts)
 library(hydroTSM)
 library(readxl)
 
-# Directorio de trabajo
+# Fijar el directorio de trabajo
 
 setwd("C:/Users/EFRAIN/Downloads")
 getwd()
 
-# Importar datos excel
+# Importación de datos excel
 dato_obs <- read_xls("obs.xls")
 dato_sim <- read_xls("sim.xls")
-obs <- as.xts(read.zoo(dato_obs))
-sim <- as.xts(read.zoo(dato_sim))
+obs <- read.zoo(dato_obs)
+sim <- read.zoo(dato_sim)
+
+# Ajuste del rango de tiempo
+obs <- window(x = obs, start = "2003-01-01",end = "2012-12-31")
+sim <- window(x = sim, start = "2003-01-01",end = "2012-12-31")
 
 # Graficando las series de tiempo 
 plot.zoo(as.zoo(obs))
 
-# Calculo de metricas
+# Cálculo de métricas de eficiencia
 
 # Diario
 eval_diaria <- gof(sim, obs)
 eval_diaria
+
+ggof(sim=sim, obs=obs,col = c("red", "blue"),
+     gofs=c("NSE","KGE","R2","RMSE","PBIAS"))
 
 # Mensual
 obs_mensual <- apply.monthly(obs, FUN=apply, MARGIN = 2, sum)
@@ -33,3 +40,7 @@ sim_mensual <- apply.monthly(sim, FUN=apply, MARGIN = 2, sum)
 
 eval_mensual <- gof(sim_mensual, obs_mensual)
 eval_mensual
+
+# Gráficos para series temporales Mensual y anual
+ggof(sim=sim, obs=obs,ftype = "ma", FUN=mean,col = c("red", "blue"),
+     gofs=c("NSE","KGE","R2","RMSE","PBIAS"))
